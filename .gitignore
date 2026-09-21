@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+
+# Local-only breadcrumbs and artifacts (also covered by global excludes)
+.local/
+.scratch/
+
+# OS / editor
+Thumbs.db
+.DS_Store
