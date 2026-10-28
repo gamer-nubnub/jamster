@@ -1,0 +1,10 @@
+name: demo-jam
+bpm: 100
+beats_per_bar: 4
+input_port: ""        # user MIDI input fragment; empty = first available input
+context_prompt: >
+  Laid-back pop-rock jam. Follow the keys player's chord changes and keep the
+  energy relaxed unless asked otherwise.
+agents:
+  - bassist.yaml
+  - drummer.yaml

@@ -1,0 +1,8 @@
+name: Roots
+role: bass
+port: jamster-bass   # loopMIDI port name (substring match)
+channel: 0
+density: 0.4
+personality: >
+  Solid, supportive bassist. Locks to the kick, favours roots and fifths,
+  adds passing notes only when the energy rises. Never overplays.

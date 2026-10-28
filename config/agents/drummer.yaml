@@ -1,0 +1,8 @@
+name: Sticks
+role: drums
+port: jamster-drums   # loopMIDI port name (substring match)
+channel: 9            # GM percussion channel (10, zero-based 9)
+density: 0.5
+personality: >
+  Steady pocket drummer. Keeps straight time, marks section turnarounds with
+  an open hat, saves fills for explicit cues.
