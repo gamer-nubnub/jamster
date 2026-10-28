@@ -27,6 +27,46 @@ band via mic (push-to-talk or always-listening); they answer with music only.
 - **UI** — bare-bones single-page web UI (FastAPI + websocket): transcript, per-agent
   intent, beat/bar/chord display.
 
+## Design decisions
+
+- **Anticipation via branching scores.** To hide LLM latency, the Tier 2 producer
+  pre-generates several candidate continuations ("options"), each with trigger
+  conditions (e.g. "user plays Am → option B"). The conductor evaluates triggers
+  deterministically at each bar boundary and plays the matching option; Tier 1 fills
+  in detail. No LLM is in the bar-boundary hot path.
+- **Global setting: trigger vocabulary** — `minimal` (chord + energy), `rich` (chords,
+  key, energy, density, tempo feel, section markers, voice intents), or `free-text`
+  (conditions interpreted by an LLM on a slower, lag-tolerant path). The option schema
+  is versioned per level.
+- **Global setting: option granularity** — `per-bar` (a short window of 2–4 bars of
+  named options with per-agent patterns), `section` (whole grooves with transition
+  triggers, Tier 1 fills bars), or `intent` (high-level energy/density/feel only,
+  Tier 1 writes all notes). Lets fast and slow LLM APIs use different modes. Default:
+  `section`.
+- **Staleness → hold and loop.** Options are stale when their TTL (default 8 bars)
+  expires *or* no trigger matches for N bars (default 2); both are configurable. The band then holds and loops its current
+  pattern until the producer recovers, and the UI shows this state prominently.
+- **Band can write back, in text only.** Agents still reply with music, plus short
+  on-screen text messages in the UI (e.g. clarifying questions). No TTS.
+- **Tier 1 and Tier 2 models: cloud by default, local opt-in.** Backend is pluggable via config;
+  the deterministic groove engine remains the deadline-miss fallback.
+- **Leader-track chords (Phase 4): MIDI-first.** Read chords from project MIDI via
+  AbletonOSC when available; fall back to classic DSP chroma + template matching on
+  the audio.
+- **Testing without Ableton.** Mock MIDI ports and a fake clock, with pytest unit
+  tests runnable on Linux CI. Hardware/Ableton checks stay manual (Windows).
+
+## Status
+
+Phases 0–1 are scaffolded (internal/Link clock, scheduler, MIDI out, chord tracker,
+deterministic bass + drums, timing probe) but not yet verified, and there are no tests.
+Everything else is not started.
+
+## Open questions
+
+- Exact bar-notation and branching-score schemas.
+- Concrete cloud/local model choices and cost budget (no spending cap decided yet).
+
 ## Phases
 
 | Phase | Slice | Verification |
