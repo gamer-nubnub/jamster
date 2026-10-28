@@ -125,6 +125,46 @@ Rules:
 - **Text messages:** an optional top-level `say: {bassist: "Want a key change?"}` is
   shown in the UI.
 
+## UI v1 spec
+
+Single-page dashboard (FastAPI + websocket), built in Phase 3.
+
+- **Layout:** single dashboard. Header with beat/bar/chord and the active section; a
+  section timeline; one card per agent plus a prominent producer card; a
+  transcript/message log; a status strip at the bottom; a collapsible project menu
+  on the left.
+- **Timeline:** horizontal strip of section blocks from the current branching score:
+  past sections dimmed, the active section glowing with a moving playhead, and the
+  candidate next sections (transition targets) shown as faint ghost blocks with their
+  trigger as a label. Score TTL is drawn as a thin marker.
+- **Agent card:** name, role, current intent, density/energy, and a speech bubble for
+  the agent's latest text message (fades after a few bars). Each agent has its own
+  accent colour, used for its card border, bubble, timeline contributions, and log
+  entries.
+- **Producer card:** visually prominent (larger, stronger glow), shows state
+  (idle/thinking/stale), last issued score id, and its own text messages.
+- **Message log:** shared scrolling list of the voice transcript and all band text
+  messages, each tagged with the sender (in its accent colour) and bar number.
+- **Status strip:** `Live` / `Holding` label (hold-and-loop shows as `Holding` with the
+  reason, e.g. "no trigger matched for 2 bars" or "score expired"). No banner or
+  flash. Also shows clock source (Link/internal) and producer state (idle/thinking).
+- **Budget:** a thin progress bar of session spend against the hard cap, amber from the
+  80 % warning threshold, red at the cap, with the amounts as a tooltip/label.
+- **Controls (light):** push-to-talk button, mic mode switch (push-to-talk /
+  always-listening), and an "ask the producer now" button. No section, energy, or
+  budget editing in v1.
+- **Project menu:** expandable panel from the left edge for project CRUD (create,
+  open, rename, duplicate, delete). A project bundles a session config
+  (`config/sessions/*.yaml`), its agents, and a visual theme.
+- **Theming:** agent and producer colours, glow intensity, and prominence are
+  configurable per project in the project's theme block; sensible defaults ship with
+  the demo project.
+- **Visual language:** pastel dark mode, "crisp precision instrument". Thin 1 px lines,
+  small padding and radii, monospace numerals for beat/bar/cost. Transparency and
+  glow are semantic: a glow means active/live (playing agent, current section), a
+  reduced-alpha element means inactive/past/stale, and a pulsing glow means
+  attention (producer thinking, budget warning). No heavy shadows or large fills.
+
 ## Phases
 
 | Phase | Slice | Verification |
