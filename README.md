@@ -48,8 +48,13 @@ band via mic (push-to-talk or always-listening); they answer with music only.
   pattern until the producer recovers, and the UI shows this state prominently.
 - **Band can write back, in text only.** Agents still reply with music, plus short
   on-screen text messages in the UI (e.g. clarifying questions). No TTS.
-- **Tier 1 and Tier 2 models: cloud by default, local opt-in.** Backend is pluggable via config;
-  the deterministic groove engine remains the deadline-miss fallback.
+- **Tier 1 and Tier 2 models: cloud by default, local opt-in.** Default classes are a top
+  reasoning model for Tier 2 and a small fast model for Tier 1; both are set in config
+  and the backend is pluggable. The deterministic groove engine remains the
+  deadline-miss fallback.
+- **Spending cap: configurable hard cap.** Default hard cap is 2 USD per session, with
+  a warning at 80 % of the cap; both values are configurable. When the cap is hit the
+  band falls back to the groove engine and the UI says so.
 - **Leader-track chords (Phase 4): MIDI-first.** Read chords from project MIDI via
   AbletonOSC when available; fall back to classic DSP chroma + template matching on
   the audio.
@@ -64,8 +69,61 @@ Everything else is not started.
 
 ## Open questions
 
-- Exact bar-notation and branching-score schemas.
-- Concrete cloud/local model choices and cost budget (no spending cap decided yet).
+- Per-bar note format used by Tier 1 (the section-level schema is drafted above, v0).
+
+## Schema draft (v0, `section` mode, `minimal` triggers)
+
+Tier 2 emits one **branching score**. Tier 1 and the groove engine turn the active
+section into per-bar `NoteEvent`/`ControlEvent` lists (see `events.py`).
+
+```yaml
+version: 0
+score_id: s-0042
+issued_at_bar: 17          # bar the producer call was based on
+ttl_bars: 8                # stale after bar 25 (default 8)
+current: verse             # section playing now
+sections:
+  verse:
+    agents:
+      bassist:  {intent: "roots and fifths, lock to kick", density: 0.4, energy: 0.4}
+      drummer:  {intent: "straight pop-rock, closed hats", density: 0.4, energy: 0.4}
+    transitions:           # evaluated in order each bar; first match wins
+      - to: chorus
+        when: {energy_above: 0.7, for_bars: 2}
+      - to: verse_am
+        when: {chord: Amin}
+  verse_am:
+    agents:
+      bassist:  {intent: "stay on A root, sparse", density: 0.3, energy: 0.4}
+      drummer:  {intent: "drop the hats", density: 0.3, energy: 0.3}
+    transitions:
+      - to: verse
+        when: {chord: Cmaj}
+  chorus:
+    agents:
+      bassist:  {intent: "eighth-note drive", density: 0.7, energy: 0.8}
+      drummer:  {intent: "open hats, big fills at bar 4", density: 0.8, energy: 0.8}
+    transitions:
+      - to: verse
+        when: {energy_below: 0.4, for_bars: 2}
+```
+
+Rules:
+
+- **Triggers:** `minimal` supports `chord` and `energy_above`/`energy_below` (with
+  optional `for_bars`). `rich` adds key, density, tempo feel, section markers, and
+  voice intents under the same `when` object. `free-text` adds `when: {text: "..."}`,
+  evaluated off the hot path.
+- **Hot path:** the conductor evaluates `transitions` deterministically at each bar
+  boundary. If none match, the current section keeps playing; after N unmatched
+  bars (default 2) or when the TTL expires, the band holds and loops.
+- **Per-agent entries:** `intent` is free text for Tier 1; `density` and `energy`
+  (0–1) feed the groove engine fallback directly.
+- **Other modes:** `per-bar` replaces a section's `intent` with explicit bar patterns
+  for 2–4 bars; `intent` mode drops `transitions` and keeps only per-agent
+  `density`/`energy`/`intent`.
+- **Text messages:** an optional top-level `say: {bassist: "Want a key change?"}` is
+  shown in the UI.
 
 ## Phases
 
