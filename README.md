@@ -125,6 +125,25 @@ Rules:
 - **Text messages:** an optional top-level `say: {bassist: "Want a key change?"}` is
   shown in the UI.
 
+## UI v1 spec
+
+Single-page dashboard (FastAPI + websocket), built in Phase 3.
+
+- **Layout:** single dashboard. Header with beat/bar/chord and the active section; one
+  card per agent; a transcript/message log; a status strip at the bottom.
+- **Agent card:** name, role, current intent, density/energy, and a speech bubble for
+  the agent's latest text message (fades after a few bars).
+- **Message log:** shared scrolling list of the voice transcript and all band text
+  messages, each tagged with the sender and bar number.
+- **Status strip:** `Live` / `Holding` label (hold-and-loop shows as `Holding` with the
+  reason, e.g. "no trigger matched for 2 bars" or "score expired"). No banner or
+  flash. Also shows clock source (Link/internal) and producer state (idle/thinking).
+- **Budget:** a thin progress bar of session spend against the hard cap, amber from the
+  80 % warning threshold, red at the cap, with the amounts as a tooltip/label.
+- **Controls (light):** push-to-talk button, mic mode switch (push-to-talk /
+  always-listening), and an "ask the producer now" button. No section, energy, or
+  budget editing in v1.
+
 ## Phases
 
 | Phase | Slice | Verification |
