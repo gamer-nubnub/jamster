@@ -188,3 +188,32 @@ def test_producer_prompt_mentions_agents_and_history(session):
                                                  transcript=["more energy please"]))
     assert "Roots (bass)" in prompt and "Sticks (drums)" in prompt
     assert "Amin@0.6" in prompt and "more energy please" in prompt and "bar 8" in prompt
+
+
+@pytest.mark.asyncio
+async def test_dashboard_renders_every_bar(session):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from jamster.tui import CliUI, Dashboard
+
+    ports = FakePorts()
+    console = Console(file=StringIO(), force_terminal=False, width=120)
+    ui = CliUI(console)
+    conductor = Conductor(
+        session, backend=FakeBackend(responder=bar_response), open_output=ports.open_output,
+        open_input=ports.open_input, make_clock=fast_clock(BPM), log=lambda _m: None, on_bar=ui.on_bar,
+    )
+    ports.input.play_chord([60, 64, 67])
+    await conductor.run(bars=4)
+    ui.close()
+    text = console.export_text() if console.record else console.file.getvalue()
+    assert "LIVE" in text or "GROOVE" in text
+    assert "Roots" in text and "producer" in text and "timeline" in text
+    # Render each recorded bar directly too, including a holding one.
+    dash = Dashboard(conductor)
+    for record in conductor.bars:
+        dash.render(record)
+    conductor.state.holding_reason = "score s-1 expired at bar 9"
+    assert "HOLDING" in str(dash.status(conductor.bars[-1]))
