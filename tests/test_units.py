@@ -57,3 +57,12 @@ def test_timeline_orders_messages_and_pairs_note_offs():
     ons = [m for _, m in messages if m.type == "note_on"]
     offs = [m for _, m in messages if m.type == "note_off"]
     assert len(ons) == len(offs)
+
+
+def test_chord_parse():
+    assert Chord.parse("Amin7") == Chord(9, "min7")
+    assert Chord.parse("Bb") == Chord(10, "maj")
+    assert Chord.parse("F#m") == Chord(6, "min")
+    assert Chord.parse("G7") == Chord(7, "7")
+    assert Chord.parse("Cmaj7").name == "Cmaj7"
+    assert Chord.parse("Dsus4").name == "Dmaj"  # unknown quality → nearest template

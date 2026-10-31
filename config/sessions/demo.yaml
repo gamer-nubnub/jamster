@@ -5,6 +5,10 @@ input_port: ""        # user MIDI input fragment; empty = first available input
 context_prompt: >
   Laid-back pop-rock jam. Follow the keys player's chord changes and keep the
   energy relaxed unless asked otherwise.
+models:                # any id from `python -m jamster --list-models`
+  producer: claude-sonnet-4.5
+  performer: gpt-4.1
+  producer_every_bars: 8
 agents:
   - bassist.yaml
   - drummer.yaml
