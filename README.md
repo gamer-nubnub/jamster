@@ -63,13 +63,29 @@ band via mic (push-to-talk or always-listening); they answer with music only.
 
 ## Status
 
-Phases 0–1 are scaffolded (internal/Link clock, scheduler, MIDI out, chord tracker,
-deterministic bass + drums, timing probe) but not yet verified, and there are no tests.
-Everything else is not started.
+Phases 0–1 are implemented (internal/Link clock, scheduler, MIDI out, chord tracker,
+deterministic bass + drums, timing probe) and verified end-to-end on fake MIDI ports
+by `tests/` (jitter < 10 ms, chord change followed by the next bar).
+
+The LLM loop is in (first cut of Phases 2–3): `llm.py` (backend protocol, GitHub
+Copilot SDK backend, scripted fake), `score.py` (branching score v0 + hot-path
+transition/staleness tracker), `producer.py` (Tier 2, re-plans on cadence and before
+TTL expiry), `performer.py` (Tier 1, per-`(agent, section, chord)` bar generation,
+pre-generated for anticipated sections, groove fallback, hold-and-loop). Verified on a
+scripted backend; the live Copilot path is unverified until someone runs it with a
+subscription. Ableton/loopMIDI checks on Windows are still manual.
+
+Not started: voice, UI, projects/theming, spending cap enforcement, AbletonOSC,
+leader-track audio.
 
 ## Open questions
 
-- Per-bar note format used by Tier 1 (the section-level schema is drafted above, v0).
+- Semantics of "no trigger matched for N bars" in `section` mode: implemented as
+  "player's chord is not one the section lists in `chords` or any transition trigger
+  for N bars". Revisit if producers rarely fill `chords`.
+- Whether Tier 1 should also re-generate on bar-count (variation) rather than only on
+  `(section, chord)` change; today a section loops its generated bar until the chord or
+  section changes.
 
 ## Schema draft (v0, `section` mode, `minimal` triggers)
 
@@ -124,6 +140,10 @@ Rules:
   `density`/`energy`/`intent`.
 - **Text messages:** an optional top-level `say: {bassist: "Want a key change?"}` is
   shown in the UI.
+- **Per-bar note format (Tier 1 output):** `{"notes": [{"beat": 0.0, "note": 48,
+  "velocity": 100, "duration": 1.0}], "cc": [{"beat": 0.0, "controller": 11,
+  "value": 90}]}`, beats relative to bar start; validated and clamped by
+  `performer.parse_bar`, drums forced to channel 10.
 
 ## UI v1 spec
 
@@ -180,3 +200,21 @@ Single-page dashboard (FastAPI + websocket), built in Phase 3.
 - Windows, Ableton Live (Link enabled)
 - [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) with one port per agent
 - Python 3.11+, local `.venv`
+
+## Development
+
+```sh
+pip install -e ".[dev,copilot]"
+pytest -q                                    # functional pipeline tests on fake ports + fake LLM, any OS
+python -m jamster --list-models              # model ids available to your Copilot subscription
+python -m jamster --bars 16                  # LLM band via Copilot (needs loopMIDI ports)
+python -m jamster --llm none --bars 8        # deterministic Phase 1 band only
+python -m jamster --producer-model <id> --performer-model <id>   # runtime model choice
+```
+
+Models default from the session YAML (`models:` block in `config/sessions/demo.yaml`).
+The Copilot backend needs a logged-in Copilot CLI (`copilot` on PATH or the SDK's
+downloaded runtime); the first run may download it.
+
+`jamster.testing` provides `FakeOutput`/`FakeInput`/`FakePorts` and a fast clock so
+the whole conductor loop runs in CI without hardware.

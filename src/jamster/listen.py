@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import mido
 
 PITCH_CLASS_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+FLAT_NAMES = {"Db": 1, "Eb": 3, "Gb": 6, "Ab": 8, "Bb": 10, "Cb": 11, "Fb": 4}
 
 # Interval templates, checked in order; first structures win ties.
 CHORD_TEMPLATES: dict[str, frozenset[int]] = {
@@ -24,6 +25,8 @@ CHORD_TEMPLATES: dict[str, frozenset[int]] = {
 }
 
 RECENT_NOTE_WINDOW_SECONDS = 2.0
+ENERGY_WINDOW_SECONDS = 2.0
+ENERGY_FULL_SCALE = 8 * 100.0  # eight forte notes in the window ≈ energy 1.0
 
 
 @dataclass(frozen=True)
@@ -38,6 +41,27 @@ class Chord:
     def root_midi(self, octave: int = 2) -> int:
         """MIDI note of the root; octave 2 puts C at 48 (bass register)."""
         return 12 * (octave + 2) + self.root_pitch_class
+
+    @staticmethod
+    def parse(name: str) -> "Chord":
+        """``"Amin7"`` → Chord(9, "min7"); unknown qualities fall back to maj/min."""
+        text = name.strip()
+        if len(text) >= 2 and text[:2] in FLAT_NAMES:
+            root, quality = FLAT_NAMES[text[:2]], text[2:]
+        elif len(text) >= 2 and text[:2] in PITCH_CLASS_NAMES:
+            root, quality = PITCH_CLASS_NAMES.index(text[:2]), text[2:]
+        elif text[:1].upper() in PITCH_CLASS_NAMES:
+            root, quality = PITCH_CLASS_NAMES.index(text[:1].upper()), text[1:]
+        else:
+            raise ValueError(f"not a chord name: {name!r}")
+        quality = quality.strip().lower()
+        if quality in CHORD_TEMPLATES:
+            return Chord(root, quality)
+        if quality in ("", "major", "M"):
+            return Chord(root, "maj")
+        if quality.startswith(("m", "min", "-")) and not quality.startswith("maj"):
+            return Chord(root, "min7" if "7" in quality else "min")
+        return Chord(root, "7" if "7" in quality else "maj")
 
 
 DEFAULT_CHORD = Chord(root_pitch_class=0, quality="maj")
@@ -73,15 +97,23 @@ class ChordTracker:
         self._held: set[int] = set()
         self._recent: dict[int, float] = {}
         self._last_chord: Chord = DEFAULT_CHORD
+        self._onsets: list[tuple[float, int]] = []  # (time, velocity)
         port.callback = self._on_message
 
     def _on_message(self, message: mido.Message) -> None:
         if message.type == "note_on" and message.velocity > 0:
             self._held.add(message.note)
             self._recent[message.note] = time.monotonic()
+            self._onsets.append((time.monotonic(), message.velocity))
         elif message.type in ("note_off", "note_on"):
             self._held.discard(message.note)
             self._recent[message.note] = time.monotonic()
+
+    def energy(self) -> float:
+        """0-1 playing intensity: velocity-weighted onsets in the recent window."""
+        now = time.monotonic()
+        self._onsets = [(at, vel) for at, vel in self._onsets if now - at < ENERGY_WINDOW_SECONDS]
+        return min(1.0, sum(vel for _, vel in self._onsets) / ENERGY_FULL_SCALE)
 
     def current_chord(self) -> Chord:
         now = time.monotonic()

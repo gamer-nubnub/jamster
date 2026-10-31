@@ -23,6 +23,17 @@ class AgentConfig:
     personality: str = ""
 
 
+DEFAULT_PRODUCER_MODEL = "claude-sonnet-4.5"
+DEFAULT_PERFORMER_MODEL = "gpt-4.1"
+
+
+@dataclass(frozen=True)
+class ModelsConfig:
+    producer: str = DEFAULT_PRODUCER_MODEL
+    performer: str = DEFAULT_PERFORMER_MODEL
+    producer_every_bars: int = 8
+
+
 @dataclass(frozen=True)
 class SessionConfig:
     name: str
@@ -31,6 +42,7 @@ class SessionConfig:
     input_port: str  # user MIDI input fragment; empty = first available
     context_prompt: str
     agents: list[AgentConfig] = field(default_factory=list)
+    models: ModelsConfig = field(default_factory=ModelsConfig)
 
 
 def load_agent(path: Path) -> AgentConfig:
@@ -49,6 +61,7 @@ def load_session(path: Path) -> SessionConfig:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     agents_dir = path.parent.parent / "agents"
     agents = [load_agent(agents_dir / agent_file) for agent_file in data.get("agents", [])]
+    models = dict(data.get("models") or {})
     return SessionConfig(
         name=data["name"],
         bpm=float(data.get("bpm", 100)),
@@ -56,4 +69,9 @@ def load_session(path: Path) -> SessionConfig:
         input_port=str(data.get("input_port", "")),
         context_prompt=str(data.get("context_prompt", "")).strip(),
         agents=agents,
+        models=ModelsConfig(
+            producer=str(models.get("producer", DEFAULT_PRODUCER_MODEL)),
+            performer=str(models.get("performer", DEFAULT_PERFORMER_MODEL)),
+            producer_every_bars=int(models.get("producer_every_bars", 8)),
+        ),
     )

@@ -12,6 +12,9 @@ dependencies = [
 [project.optional-dependencies]
 # Ableton Link sync; falls back to the internal clock when absent.
 link = ["aalink>=0.5"]
+# LLM producer/performer via your GitHub Copilot subscription.
+copilot = ["github-copilot-sdk>=1.0"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -19,3 +22,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
