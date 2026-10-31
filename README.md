@@ -63,9 +63,10 @@ band via mic (push-to-talk or always-listening); they answer with music only.
 
 ## Status
 
-Phases 0–1 are scaffolded (internal/Link clock, scheduler, MIDI out, chord tracker,
-deterministic bass + drums, timing probe) but not yet verified, and there are no tests.
-Everything else is not started.
+Phases 0–1 are implemented (internal/Link clock, scheduler, MIDI out, chord tracker,
+deterministic bass + drums, timing probe) and verified end-to-end on fake MIDI ports
+by `tests/` (jitter < 10 ms, chord change followed by the next bar). Ableton/loopMIDI
+checks on Windows are still manual. Everything else is not started.
 
 ## Open questions
 
@@ -180,3 +181,14 @@ Single-page dashboard (FastAPI + websocket), built in Phase 3.
 - Windows, Ableton Live (Link enabled)
 - [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) with one port per agent
 - Python 3.11+, local `.venv`
+
+## Development
+
+```sh
+pip install -e ".[dev]"
+pytest -q                      # functional pipeline tests on fake ports, any OS
+python -m jamster --bars 8     # real MIDI out (needs loopMIDI ports)
+```
+
+`jamster.testing` provides `FakeOutput`/`FakeInput`/`FakePorts` and a fast clock so
+the whole conductor loop runs in CI without hardware.
