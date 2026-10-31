@@ -66,6 +66,7 @@ class Conductor:
         producer_model: str | None = None,
         performer_model: str | None = None,
         log: Callable[[str], None] = print,
+        on_bar: Callable[["Conductor", BarRecord], None] | None = None,
     ) -> None:
         self.session = session
         self.use_link = use_link
@@ -74,6 +75,8 @@ class Conductor:
         self._open_input = open_input
         self._make_clock_override = make_clock
         self._log = log
+        self._on_bar = on_bar
+        self.plans: list[tuple[int, str]] = []  # (bar, score_id) accepted
         self._ports: dict[str, mido.ports.BaseOutput] = {}
         self.transcript: list[str] = []
         self.messages: list[tuple[int, str, str]] = []  # (bar, agent, text) shown in the UI
@@ -118,9 +121,10 @@ class Conductor:
         fresh = self.producer.take()
         if fresh is not None:
             self.state.accept(fresh, bar_index)
+            self.plans.append((bar_index, fresh.score_id))
             for agent, text in fresh.say.items():
                 last = next((m[2] for m in reversed(self.messages) if m[1] == agent), None)
-                if text != last:  # a re-plan repeating itself is not news
+                if text.strip() and text != last:  # a re-plan repeating itself is not news
                     self.messages.append((bar_index, agent, text))
             self._log(f"[plan] {fresh.score_id}: {' | '.join(fresh.sections)} → current '{fresh.current}'")
         context = ProducerContext(
@@ -170,6 +174,8 @@ class Conductor:
                 self.bars.append(record)
                 status = f"HOLD ({self.state.holding_reason})" if self.state.loop else f"section {record.section}"
                 self._log(f"[bar {bar.index + 1:>3}] {chord.name:<6} e={energy:.2f} {status} {record.sources}")
+                if self._on_bar is not None:
+                    self._on_bar(self, record)
         finally:
             await asyncio.sleep(clock.beats_per_bar * 60.0 / clock.bpm)  # let note-offs drain
             for port in self._ports.values():

@@ -75,7 +75,12 @@ pre-generated for anticipated sections, groove fallback, hold-and-loop). Verifie
 scripted backend; the live Copilot path is unverified until someone runs it with a
 subscription. Ableton/loopMIDI checks on Windows are still manual.
 
-Not started: voice, UI, projects/theming, spending cap enforcement, AbletonOSC,
+A terminal dashboard (`tui.py`, Rich) stands in for UI v1: header, section timeline
+with anticipated sections, agent cards with speech bubbles, producer card, message log,
+status strip (LIVE / GROOVE / HOLDING, spend, model-vs-groove bar counts).
+`python -m jamster --demo` shows it on fake ports with a scripted player and LLM.
+
+Not started: voice, web UI, projects/theming, spending cap enforcement, AbletonOSC,
 leader-track audio.
 
 ## Open questions
@@ -206,10 +211,13 @@ Single-page dashboard (FastAPI + websocket), built in Phase 3.
 ```sh
 pip install -e ".[dev,copilot]"
 pytest -q                                    # functional pipeline tests on fake ports + fake LLM, any OS
+python -m jamster --demo --bars 32           # dashboard on fake ports, scripted player + fake LLM
+python -m jamster --demo --llm copilot       # same, but real Copilot producer/performer
 python -m jamster --list-models              # model ids available to your Copilot subscription
 python -m jamster --bars 16                  # LLM band via Copilot (needs loopMIDI ports)
 python -m jamster --llm none --bars 8        # deterministic Phase 1 band only
 python -m jamster --producer-model <id> --performer-model <id>   # runtime model choice
+python -m jamster --ui log                   # plain per-bar log lines instead of the dashboard
 ```
 
 Models default from the session YAML (`models:` block in `config/sessions/demo.yaml`).
